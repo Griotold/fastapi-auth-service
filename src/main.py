@@ -6,7 +6,14 @@ from app.schemas.post import PostCreate, PostResponse, PostUpdate
 from sqlalchemy.orm import Session
 
 
-app = FastAPI()
+app = FastAPI(
+    title="FastAPI NCP Mailing Service",
+    description="게시판과 NCP 메일 발송 기능을 제공하는 서비스입니다.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+    
+)
 
 @app.get("/")
 def health_check():
@@ -14,7 +21,7 @@ def health_check():
 
 # 데이터베이스 체크!
 @app.get("/ping")
-async def pind_db():
+async def ping_db():
     try:
         with engine.connect() as conn:
             return {"status": "connected"}
@@ -36,7 +43,12 @@ def init_db():
 # app = FastAPI(lifespan=lifespan)
 
 # 게시글 생성
-@app.post("/posts", response_model=PostResponse)
+@app.post(
+        "/posts", 
+        response_model=PostResponse,
+        summary="새 게시글 생성",
+        description="새 게시글을 생성합니다."
+        )
 def create_post(post: PostCreate, db: Session = Depends(get_db)):
     created_post = Post(**post.model_dump())
 
@@ -47,7 +59,12 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
     return created_post
 
 # 게시글 목록 조회
-@app.get("/posts", response_model=list[PostResponse])
+@app.get(
+        "/posts", 
+        response_model=list[PostResponse],
+        summary="게시글 목록 조회",
+        description="모든 게시글을 조회합니다."
+)
 def get_posts(db: Session = Depends(get_db)):
     query = (
         select(Post).
@@ -60,7 +77,24 @@ def get_posts(db: Session = Depends(get_db)):
     return posts
 
 # 게시글 상세 조회
-@app.get("/posts/{post_id}", response_model=PostResponse)
+@app.get(
+        "/posts/{post_id}", 
+        response_model=PostResponse,
+        summary="게시글 상세 조회",
+        description="특정 게시글을 조회합니다.",
+        responses={
+            404: {
+                "description": "게시글 조회 실패",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "detail": "게시글을 찾을 수 없습니다."
+                        }
+                    }
+                }
+            }
+        }
+)
 def get_post(post_id: int, db: Session = Depends(get_db)):
     query = (
         select(Post).
@@ -74,7 +108,24 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     return post
 
 # 게시글 수정
-@app.put("/posts/{post_id}", response_model=PostResponse)
+@app.put(
+        "/posts/{post_id}", 
+        response_model=PostResponse,
+        summary="게시글 수정",
+        description="특정 게시글을 수정합니다.",
+        responses={
+            404: {
+                "description": "게시글 수정 실패",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "detail": "게시글을 찾을 수 없습니다."
+                        }
+                    }
+                }
+            }
+        }
+)
 def update_post(post_id: int, post_update: PostUpdate, db: Session = Depends(get_db)):
     query = (
         select(Post).
@@ -99,7 +150,34 @@ def update_post(post_id: int, post_update: PostUpdate, db: Session = Depends(get
     return post
 
 # 게시글 삭제
-@app.delete("/posts/{post_id}", response_model=dict)
+@app.delete(
+        "/posts/{post_id}", 
+        response_model=dict,
+        summary="게시글 삭제",
+        description="특정 게시글을 삭제합니다.",
+        responses={
+            200: {
+                "description": "게시글 삭제 성공",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "message": "게시글이 성공적으로 삭제되었습니다."
+                        }
+                    }
+                }
+            }, 
+            404: {
+                "description": "게시글 삭제 실패",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "detail": "게시글을 찾을 수 없습니다."
+                        }
+                    }
+                }
+            }
+        }
+)
 def delete_post(post_id: int, db: Session = Depends(get_db)):
     query = (
         select(Post).
