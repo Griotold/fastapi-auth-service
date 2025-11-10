@@ -13,3 +13,6 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.scripts]
+dev = {cmd = "uvicorn main:app --reload", env = {PYTHONPATH = "src"}}

@@ -1,9 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy import select
-from app.database import Base, engine, get_db
-from app.models.post import Post
+from app.database import Base, engine
 from app.schemas.post import PostCreate, PostResponse, PostUpdate
-from sqlalchemy.orm import Session
+from app.services.post_service import PostService, get_post_service
 
 
 app = FastAPI(
@@ -49,12 +47,8 @@ def init_db():
         summary="새 게시글 생성",
         description="새 게시글을 생성합니다."
         )
-def create_post(post: PostCreate, db: Session = Depends(get_db)):
-    created_post = Post(**post.model_dump())
-
-    db.add(created_post)
-    db.commit()
-    db.refresh(created_post)
+def create_post(post: PostCreate, post_service: PostService = Depends(get_post_service)):
+    created_post = post_service.create_post(post)
 
     return created_post
 
@@ -65,14 +59,8 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
         summary="게시글 목록 조회",
         description="모든 게시글을 조회합니다."
 )
-def get_posts(db: Session = Depends(get_db)):
-    query = (
-        select(Post).
-        order_by(Post.created_at.desc())
-    )
-    posts = db.execute(query).scalars().all()
-
-    # posts = db.query(Post).order_by(Post.created_at_desc()).all()
+def get_posts(post_service: PostService = Depends(get_post_service)):
+    posts = post_service.get_posts()
     
     return posts
 
@@ -95,12 +83,8 @@ def get_posts(db: Session = Depends(get_db)):
             }
         }
 )
-def get_post(post_id: int, db: Session = Depends(get_db)):
-    query = (
-        select(Post).
-        where(Post.id == post_id)
-    )
-    post = db.execute(query).scalar_one_or_none()
+def get_post(post_id: int, post_service: PostService = Depends(get_post_service)):
+    post = post_service.get_post(post_id)
 
     if post is None:
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
@@ -126,27 +110,12 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
             }
         }
 )
-def update_post(post_id: int, post_update: PostUpdate, db: Session = Depends(get_db)):
-    query = (
-        select(Post).
-        where(Post.id == post_id)
-    )
-    post = db.execute(query).scalar_one_or_none()
+def update_post(post_id: int, post_update: PostUpdate, post_service: PostService = Depends(get_post_service)):
+    post = post_service.update_post(post_id, post_update)
 
     if post is None:
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
 
-    update_dict = {
-        key: value
-        for key, value in post_update.model_dump().items()
-        if value is not None
-    }
-
-    for key, value in update_dict.items():
-        setattr(post, key, value)
-
-    db.commit()
-    db.refresh(post)
     return post
 
 # 게시글 삭제
@@ -178,19 +147,11 @@ def update_post(post_id: int, post_update: PostUpdate, db: Session = Depends(get
             }
         }
 )
-def delete_post(post_id: int, db: Session = Depends(get_db)):
-    query = (
-        select(Post).
-        where(Post.id == post_id)
-    )
+def delete_post(post_id: int, post_service: PostService = Depends(get_post_service)):
+    post = post_service.delete_post(post_id)
 
-    post = db.execute(query).scalar_one_or_none()
-
-    if post is None:
-        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
-
-    db.delete(post)
-    db.commit() 
+    if post is False:
+        raise HTTPException(status_code=404, detail=f"{post_id}번 게시글을 찾을 수 없습니다.")
     
     return {"message": "게시글이 성공적으로 삭제되었습니다."}  
 
