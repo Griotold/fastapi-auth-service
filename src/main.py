@@ -1,4 +1,7 @@
+from app import models
+
 from fastapi import Depends, FastAPI, HTTPException
+from app.apis import user
 from app.database import Base, engine
 from app.schemas.post import PostCreate, PostResponse, PostUpdate
 from app.services.post_service import PostService, get_post_service
@@ -10,8 +13,9 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
-    
 )
+
+app.include_router(user.router, tags=["user"])
 
 @app.get("/")
 def health_check():
